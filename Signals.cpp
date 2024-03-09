@@ -68,6 +68,39 @@ class Signal : public Accessory {
     }
 };
 
+class TrackBlockSignal : public Signal {
+    uint16_t pinRed;
+    uint16_t pinWhite;
+  protected:
+    void write(uint8_t red, uint8_t white) {
+      CHECK_VIRTUAL;
+      digitalWrite(pinRed, red);
+      digitalWrite(pinWhite, white);
+    }
+  public:
+    TrackBlockSignal(addr_t addr, boolean isVirtual, Track* track, uint16_t pinRed, uint16_t pinWhite) : Signal(addr, isVirtual, track) {
+      this->pinRed = pinRed;
+      this->pinWhite = pinWhite;
+      if(!isVirtual) {
+        pinMode(pinRed, OUTPUT);
+        pinMode(pinWhite, OUTPUT);
+      }
+      this->transition(this->getState());
+    }
+    
+    boolean localTransition(SignalState state) {
+      switch (state) {
+        case SH1:
+          this->write(LOW, HIGH);
+          return true;
+        case HP0:
+          this->write(HIGH, LOW);
+          return true;
+      }
+      return false;
+    }
+};
+
 
 class BlockSignal : public Signal {
     uint16_t pinRed;

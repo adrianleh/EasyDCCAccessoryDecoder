@@ -22,11 +22,13 @@ class SignalContainer {
     bool needsAnyWrite;
     uint8_t nChunks;
     long int lastWriteReq;
+    uint8_t idx;
 #ifdef CONTAINER_DEBUG 
     byte *fakeEEPROM;
 #endif
   public:
     SignalContainer(uint8_t noSignals) {
+      this->idx = 0;
       this->signals = static_cast<Signal**>(malloc(sizeof(Signal*) * noSignals));
       this->writeFlags = static_cast<bool*>(malloc(sizeof(bool) * noSignals));
       this->lastWriteReq = millis();
@@ -38,9 +40,10 @@ class SignalContainer {
       this->baseAddr = 512;
 #endif
     }
-    void addSignal(uint8_t pos, Signal* signal) {
-      assert(pos < this->length);
-      signals[pos] = signal;
+    void add(Signal* signal) {
+      assert(idx < this->length);
+      signals[idx] = signal;
+      idx++;
       signal->transition(signal->getState()); // Ensure signal is in correct state upon loading.
     }
 

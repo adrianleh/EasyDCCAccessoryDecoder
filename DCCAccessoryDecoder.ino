@@ -1,12 +1,5 @@
-#define TurnoutDecoder
-
 #include <NmraDcc.h>
-
-
-#ifdef TurnoutDecoder
-#include "Multiplex.cpp"
-#include "TurnoutContainer.cpp"
-#endif
+#include "config.cpp"
 
 // This Example shows how to use the library as a DCC Accessory Decoder or a DCC Signalling Decoder
 // It responds to both the normal DCC Turnout Control packets and the newer DCC Signal Aspect packets
@@ -15,38 +8,8 @@
 NmraDcc  Dcc ;
 DCC_MSG  Packet ;
 
-// Define the Arduino input Pin number for the DCC Signal
-#define DCC_PIN     2
-
-// Uncomment to print all DCC Packets
-//#define NOTIFY_DCC_MSG
-#define TurnoutDecoder
-#ifdef TurnoutDecoder
-  #define NO_TURNOUTS 13
-  #if NO_TURNOUTS >= 24 
-    #error "Only 24 turnouts supported!"
-  #endif
-  #define BASE_ADDR 200
-  
-  static MultiplexOutput** mults = static_cast<MultiplexOutput**>(malloc(((NO_TURNOUTS / 8) + 1) * sizeof(MultiplexOutput*)));
-
-  static TurnoutContainer* turnoutContainer = new TurnoutContainer(NO_TURNOUTS);
-  
-  void initContainers() {
-    mults[0] = new MultiplexOutput(3,4,5,6,7);
-    #if NO_TURNOUTS >= 8
-    mults[1] = new MultiplexOutput(8,9,10,11,12);
-    #endif
-    #if NO_TURNOUTS >= 16
-    mults[2] = new MultiplexOutput(13,14,15,16,17);
-    #endif
-    for(uint8_t i = 0; i < NO_TURNOUTS; i++) {
-      auto mult = mults[i / 8];
-      auto mult_idx = i % 8;
-      turnoutContainer->add(new Turnout(BASE_ADDR + i, mult, 2 * mult_idx, 2 * mult_idx + 1));
-    }     
-  }
-#endif
+static TurnoutContainer* turnoutContainer = new TurnoutContainer(NO_TURNOUTS);
+static SignalContainer* signalContainer = new SignalContainer(NO_SIGNALS);
 
 struct CVPair
 {
@@ -112,7 +75,6 @@ void notifyDccAccTurnoutBoard( uint16_t BoardAddr, uint8_t OutputPair, uint8_t D
 // This function is called whenever a normal DCC Turnout Packet is received and we're in Output Addressing Mode
 void notifyDccAccTurnoutOutput( uint16_t Addr, uint8_t Direction, uint8_t OutputPower )
 {
-#ifdef TurnoutDecoder
   Serial.print("notifyDccAccTurnoutOutput: ") ;
   Serial.print(Addr, DEC) ;
   Serial.print(',');
@@ -120,7 +82,6 @@ void notifyDccAccTurnoutOutput( uint16_t Addr, uint8_t Direction, uint8_t Output
   Serial.print(',');
   Serial.println(OutputPower, HEX) ;
   turnoutContainer->transition(Addr, static_cast<TurnoutState>(Direction));
-#endif
  }
 // This function is called whenever a DCC Signal Aspect Packet is received
 void notifyDccSigOutputState( uint16_t Addr, uint8_t State)
@@ -129,6 +90,8 @@ void notifyDccSigOutputState( uint16_t Addr, uint8_t State)
   Serial.print(Addr, DEC) ;
   Serial.print(',');
   Serial.println(State, HEX) ;
+  signalContainer->transitionWithAddress(Addr, static_cast<SignalState>(State));
+
 }
 
 void setup()
@@ -140,7 +103,7 @@ void setup()
   }
   Serial.println("Launching...");
   delay(200);
-  initContainers();
+  initContainers(turnoutContainer, signalContainer);
 
   // Configure the DCC CV Programing ACK pin for an output
   pinMode( DccAckPin, OUTPUT );
